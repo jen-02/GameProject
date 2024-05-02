@@ -27,7 +27,7 @@
 #include "../include/enigme_fichier.h"
 #include "../include/background.h"
 #include "../include/perso.h"
-
+#include "minimap.h"
 // screen
 SDL_Surface *screen;
 SDL_Surface *level = "../assets/img/otto.png";
@@ -194,7 +194,8 @@ int main()
 
     // init perso
     initPerso(&p);
-
+     //init mini
+    minimap m;
     // uint32 return time in milliseconds
     Uint32 last_time = SDL_GetTicks();
 
@@ -565,6 +566,9 @@ int main()
                         enigmeDone = 1;
                     }
                 }
+                majminimap(&p, &m, camera, redimensionnement);
+                 afficherminimap(m, screen);
+                 break;
             }
 
             while (SDL_PollEvent(&event))
