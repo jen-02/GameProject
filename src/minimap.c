@@ -1,87 +1,147 @@
-/**
- * @file minimap.c
- * @brief Minimap code.
- * @author Malek Hammami
- */
-
+#include <stdio.h>
+#include <stdlib.h>
+#include <SDL/SDL.h>
+#include <SDL/SDL_image.h>
+#include <SDL/SDL_mixer.h>
+#include <SDL/SDL_ttf.h>
 #include "minimap.h"
 
-/**
- * @brief Initializes the minimap by setting its coordinates, size, image, and the surface it will be drawn on.
- * @param m A pointer to a minimap structure.
- */
 void initmap(minimap *m)
 {
-    m->x = (1280 / 2) - 125;
-    m->y = 0;
-    m->largeur = 250;
-    m->hauteur = 180;
-    m->image = IMG_Load("minimap.png");
-    m->carte = SDL_CreateRGBSurface(0, m->largeur, m->hauteur, 32, 0, 0, 0, 0);
-    SDL_BlitSurface(m->image, NULL, m->carte, NULL);
+    m->position_mini.x = 621;
+    m->position_mini.y = 231;
+    m->sprite = NULL;
+    m->sprite = IMG_Load("minimap1.png");
 }
 
-/**
- * @brief Displays the minimap on the screen.
- * @param m A minimap structure.
- * @param screen The surface on which the minimap will be displayed.
- */
 void afficherminimap(minimap m, SDL_Surface *screen)
 {
-    SDL_Rect position;
-    position.x = m.x;
-    position.y = m.y;
-    SDL_BlitSurface(m.carte, NULL, screen, &position);
+    SDL_BlitSurface(m.sprite, NULL, screen, &m.position_mini);
 }
 
-/**
- * @brief Displays the elapsed time in seconds since a given reference time in milliseconds.
- * @param temps The reference time in milliseconds.
- */
-void affichertemps(int temps)
+void liberer_minimap(minimap *m)
 {
-    int temps_ecoule = SDL_GetTicks() - temps;
-    int temps_restant = temps_ecoule % 1000;
-    printf("Elapsed time: %d seconds\nRemaining time: %d seconds\n", temps_ecoule, temps_restant);
+    SDL_FreeSurface(m->sprite);
 }
 
-/**
- * @brief Checks if there is a collision between a person and a specified mask.
- * @param p A person structure.
- * @param Masque A mask surface.
- * @return 1 if a collision is detected, 0 otherwise.
- */
+void initialiser_temps(temps *t)
+{
+    t->texte = NULL;
+    t->position.x = 0;
+    t->position.y = 100;
+    t->police = NULL;
+    t->police = TTF_OpenFont("avocado.ttf", 40);
+    strcpy(t->entree, "");
+    (t->secondesEcoulees) = 0;
+    time(&(t->t1));
+}
+
+void afficher_temps(temps *t, SDL_Surface *screen)
+{
+    SDL_Color couleurnoir = {0, 0, 0};
+
+    time(&(t->t2));
+
+    t->secondesEcoulees = t->t2 - t->t1;
+
+    t->min = ((t->secondesEcoulees / 60) % 60);
+    t->sec = ((t->secondesEcoulees) % 60);
+    int millisecondes = SDL_GetTicks() % 60;
+
+    sprintf(t->entree, "%02d:%02d:%02d", t->min, t->sec, millisecondes);
+
+    t->texte = TTF_RenderText_Blended(t->police, t->entree, couleurnoir);
+
+    SDL_BlitSurface(t->texte, NULL, screen, &(t->position));
+}
+
+void liberer_temps(temps *t, SDL_Surface *screen)
+{
+    SDL_FreeSurface(t->texte);
+    TTF_CloseFont(t->police);
+}
+SDL_Color GetPixel(SDL_Surface *Background, int x, int y)
+{
+
+    SDL_Color color;
+    Uint32 col = 1;
+    
+
+    char *pixelPosition = (char *)Background->pixels;
+    
+    pixelPosition += (Background->pitch * y);
+    
+    pixelPosition += (Background->format->BytesPerPixel * x);
+    
+    memcpy(&col, pixelPosition, Background->format->BytesPerPixel);
+    
+    SDL_GetRGB(col, Background->format, &color.r, &color.g, &color.b);
+
+    return (color);
+}
 int collisionPP(Personne p, SDL_Surface *Masque)
 {
-    int collision = 0;
-    Uint32 *pixels = (Uint32 *)Masque->pixels;
-    int x = 0;
-    int y = 0;
-    for (x = p.x; x < p.x + p.largeur; x++)
+    SDL_Color test, couleurnoir = {0, 0, 0};
+
+    SDL_Rect pos[8];
+    pos[0].x = p.position_perso.x;
+    pos[0].y = p.position_perso.y;
+    pos[1].x = p.position_perso.x + p.position_perso.w / 2;
+    pos[1].y = p.position_perso.y;
+    pos[2].x = p.position_perso.x + p.position_perso.w;
+    pos[2].y = p.position_perso.y;
+    pos[3].x = p.position_perso.x;
+    pos[3].y = p.position_perso.y + p.position_perso.h / 2;
+    pos[4].x = p.position_perso.x;
+    pos[4].y = p.position_perso.y + p.position_perso.h;
+    pos[5].x = p.position_perso.x + p.position_perso.w / 2;
+    pos[5].y = p.position_perso.y + p.position_perso.h;
+    pos[6].x = p.position_perso.x + p.position_perso.w;
+    pos[6].y = p.position_perso.y + p.position_perso.h;
+    pos[7].x = p.position_perso.x + p.position_perso.w;
+    pos[7].y = p.position_perso.y + p.position_perso.h / 2;
+    int collision = 0, x, y;
+
+    for (int i = 0; i < 8 && collision == 0; i++)
     {
-        for (y = p.y; y < p.y + p.hauteur; y++)
-        {
-            Uint32 pixel = pixels[(y * Masque->w) + x];
-            if (pixel == 0xFFFFFFFF)
-            {
-                collision = 1;
-            }
-        }
+        x = pos[i].x;
+        y = pos[i].y;
+        
+        if (test.r == 0 && test.g == 0 && test.b == 0)
+            collision = 1;
     }
     return collision;
 }
-
-/**
- * @brief Updates the minimap display.
- * @param m A pointer to a carte structure.
- * The function blits the minimap surface onto the carte image surface and updates the area of the screen where the minimap is located.
- */
-void animerMinimap(carte *m)
+	
+void majminimap(Personne *p, minimap *m, SDL_Rect camera, int redimensionnement)
 {
+    if (camera.x == 0)
+        p->position_perso.x += redimensionnement;
 
-    SDL_Rect position;
-    position.x = m->x;
-    position.y = m->y;
-    SDL_BlitSurface(m->carte, NULL, m->image, &position);
-    SDL_UpdateRect(m->image, position.x, position.y, m->largeur, m->hauteur);
+    if (camera.x == 1)
+        p->position_perso.x -= redimensionnement;
+
+    if (camera.x == 2)
+        p->position_perso.y += redimensionnement;
+
+    if (camera.x == 3)
+        p->position_perso.y -= redimensionnement;
 }
+
+void animerMinimap(minimap *m) {
+   
+    static int dx = 1; 
+    static int dy = 1; 
+
+    
+    m->position_mini.x += dx;
+    m->position_mini.y += dy;
+
+    if (m->position_mini.x <= 0 || m->position_mini.x >= SCREEN_W - m->sprite->w) {
+        dx = -dx; 
+    }
+    if (m->position_mini.y <= 0 || m->position_mini.y >= SCREEN_H - m->sprite->h) {
+        dy = -dy; 
+    
+}
+
